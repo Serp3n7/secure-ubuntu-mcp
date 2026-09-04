@@ -64,7 +64,7 @@ Never expose a raw shell. The server validates **every path, command, and file**
 
 ```bash
 # 1. Clone & enter
-git clone <your-repo-url> && cd ubuntu_mcp_server
+git clone https://github.com/Serp3n7/secure-ubuntu-mcp.git && cd secure-ubuntu-mcp
 
 # 2. Interactive setup (venv + deps + tests + Claude config) — recommended
 python3 setup.py

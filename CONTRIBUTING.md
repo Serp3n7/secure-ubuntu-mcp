@@ -24,7 +24,7 @@ Our mission is to provide a **security-first**, production-ready MCP server that
 
 1. **Fork and Clone**
    ```bash
-   git clone https://github.com/yourusername/secure-ubuntu-mcp.git
+   git clone https://github.com/Serp3n7/secure-ubuntu-mcp.git
    cd secure-ubuntu-mcp
    ```
 
