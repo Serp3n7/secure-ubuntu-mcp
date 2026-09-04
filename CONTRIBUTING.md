@@ -16,7 +16,7 @@ Our mission is to provide a **security-first**, production-ready MCP server that
 
 ### Prerequisites
 - Ubuntu 18.04+ (primary development environment)
-- Python 3.9+
+- Python 3.10+
 - Git
 - Basic knowledge of system security principles
 

@@ -14,9 +14,9 @@ from typing import Dict, Any
 
 
 def check_python_version():
-    """Ensure Python 3.9+ is being used"""
-    if sys.version_info < (3, 9):
-        print("❌ Python 3.9 or higher is required!")
+    """Ensure Python 3.10+ is being used"""
+    if sys.version_info < (3, 10):
+        print("❌ Python 3.10 or higher is required!")
         print(f"Current version: {sys.version}")
         sys.exit(1)
     print(f"✅ Python version: {sys.version}")

@@ -23,8 +23,8 @@ class UbuntuMCPInstaller:
         print("Checking prerequisites...")
 
         # Check Python version
-        if sys.version_info < (3, 8):
-            print("Error: Python 3.8 or higher required")
+        if sys.version_info < (3, 10):
+            print("Error: Python 3.10 or higher required")
             return False
 
         # Check if running on Ubuntu
@@ -45,7 +45,7 @@ class UbuntuMCPInstaller:
         try:
             subprocess.run([
                 sys.executable, "-m", "pip", "install",
-                "mcp>=0.3.0", "psutil>=5.9.0"
+                "mcp>=2.0.0,<3", "psutil>=5.9.0"
             ], check=True)
             return True
         except subprocess.CalledProcessError as e:

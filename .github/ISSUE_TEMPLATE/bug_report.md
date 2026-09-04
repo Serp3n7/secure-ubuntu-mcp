@@ -29,7 +29,7 @@ A clear and concise description of what actually happened.
 
 ## Environment Information
 - **OS**: [e.g. Ubuntu 22.04]
-- **Python Version**: [e.g. 3.9.5]
+- **Python Version**: [e.g. 3.12.4]
 - **MCP Server Version**: [e.g. 1.0.0]
 - **Security Policy**: [e.g. secure/dev/custom]
 - **Claude Desktop Version** (if applicable): [e.g. 1.0.0]
