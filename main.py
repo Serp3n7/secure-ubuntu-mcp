@@ -302,8 +302,46 @@ class SecurityChecker:
                     continue
                 self.logger.warning(
                     f"Potentially dangerous pattern '{pattern}' detected in command: {full_command_str}")
-                if self.policy.use_shell_exec:
-                    raise SecurityViolation(f"Dangerous pattern detected in shell command: {desc}")
+                raise SecurityViolation(f"Dangerous pattern blocked: {desc}")
+
+        # Commands that accept path arguments - validate each against the path policy
+        PATH_ARG_COMMANDS = {
+            'cat', 'ls', 'grep', 'find', 'head', 'tail', 'stat',
+            'du', 'file', 'wc', 'sort', 'uniq', 'cut'
+        }
+
+        if command_basename in PATH_ARG_COMMANDS:
+            args = cmd_parts[1:]
+
+            # Block find -exec / -execdir / -delete (arbitrary command execution via find)
+            if command_basename == 'find':
+                dangerous_find_flags = {'-exec', '-execdir', '-ok', '-okdir', '-delete'}
+                for arg in args:
+                    if arg in dangerous_find_flags:
+                        raise SecurityViolation(
+                            f"Dangerous find flag blocked: '{arg}' (allows arbitrary command execution)"
+                        )
+
+            # Validate path-like arguments against the configured path policy
+            for arg in args:
+                if arg.startswith('-'):
+                    continue  # skip flags
+                if arg.startswith('/') or '..' in arg or arg.startswith('./'):
+                    try:
+                        self.validate_path_access(arg, 'read')
+                    except SecurityViolation as e:
+                        raise SecurityViolation(
+                            f"Path argument blocked: '{arg}' - {e}"
+                        )
+
+        # Block curl/wget output-to-file flags (download+execute attack vector)
+        if command_basename in {'curl', 'wget'}:
+            output_flags = {'-o', '-O', '--output', '--output-document'}
+            for arg in cmd_parts[1:]:
+                if arg in output_flags or any(arg.startswith(f + '=') for f in ['--output', '--output-document']):
+                    raise SecurityViolation(
+                        f"File output flag blocked for {command_basename}: '{arg}' (download+execute vector)"
+                    )
 
         return cmd_parts
 
@@ -402,7 +440,7 @@ class SecureUbuntuController:
             # Create a controlled environment
             env = os.environ.copy()
             # Remove potentially dangerous environment variables
-            dangerous_env_vars = ['LD_PRELOAD', 'LD_LIBRARY_PATH', 'IFS']
+            dangerous_env_vars = ['LD_PRELOAD', 'LD_LIBRARY_PATH', 'IFS', 'PYTHONPATH', 'PERL5LIB', 'RUBYLIB', 'NODE_PATH']
             for var in dangerous_env_vars:
                 if var in env:
                     del env[var]
@@ -673,13 +711,31 @@ def create_secure_policy() -> SecurityPolicy:
             "ls", "cat", "echo", "pwd", "whoami", "date", "uname",
             "grep", "head", "tail", "wc", "sort", "uniq", "cut",
             "find", "which", "file", "stat", "du", "df",
-            "apt"  # For package search/list
+            "apt"  # For package search/list only
         ],
         forbidden_commands=[
-            "rm", "rmdir", "dd", "mkfs", "fdisk", "cfdisk", "shutdown",
-            "reboot", "halt", "init", "systemctl", "service", "mount", "umount",
-            "chmod", "chown", "chgrp", "su", "sudo", "passwd", "useradd",
-            "userdel", "usermod", "crontab", "at", "batch", "nohup", "pkill", "kill"
+            # Destructive filesystem ops
+            "rm", "rmdir", "dd", "mkfs", "fdisk", "cfdisk",
+            # System control
+            "shutdown", "reboot", "halt", "init", "systemctl", "service",
+            "mount", "umount", "chmod", "chown", "chgrp",
+            # Privilege escalation
+            "su", "sudo", "passwd", "useradd", "userdel", "usermod",
+            # Scheduling / persistence
+            "crontab", "at", "batch", "nohup",
+            # Process control
+            "pkill", "kill",
+            # Code execution (RCE vector - arbitrary code via interpreter or download)
+            "python3", "python", "python2",
+            "node", "nodejs",
+            "npm", "npx", "yarn",
+            "pip3", "pip",
+            "docker", "podman",
+            "curl", "wget",
+            "git",
+            "bash", "sh", "zsh", "fish", "dash",
+            "perl", "ruby", "php", "lua",
+            "nc", "ncat", "netcat", "socat",
         ],
         server_executable_paths={script_dir},
         system_critical_paths={"/etc", "/boot", "/sys", "/proc", "/dev"}
@@ -714,6 +770,35 @@ def create_development_policy() -> SecurityPolicy:
         server_executable_paths={script_dir},
         system_critical_paths={"/boot", "/sys", "/proc", "/dev"}
     )
+
+
+
+def load_policy_from_config(config_path, base_policy_fn):
+    """Load and overlay config.json onto a base policy. Falls back to defaults on error."""
+    import json as _json
+    policy = base_policy_fn()
+    try:
+        with open(config_path, "r") as f:
+            cfg = _json.load(f)
+        sec = cfg.get("security", {})
+        if "allowed_paths" in sec:
+            policy.allowed_paths = [os.path.expanduser(p) for p in sec["allowed_paths"]]
+        if "forbidden_paths" in sec:
+            policy.forbidden_paths = sec["forbidden_paths"]
+        if "allowed_commands" in sec:
+            policy.allowed_commands = sec["allowed_commands"]
+        if "forbidden_commands" in sec:
+            policy.forbidden_commands = sec["forbidden_commands"]
+        if "max_command_timeout" in sec:
+            policy.max_command_timeout = int(sec["max_command_timeout"])
+        if "allow_sudo" in sec:
+            policy.allow_sudo = bool(sec["allow_sudo"])
+        logging.getLogger(__name__).info(f"Loaded security policy from {config_path}")
+    except FileNotFoundError:
+        logging.getLogger(__name__).info(f"No config.json at {config_path}, using defaults.")
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"config.json load failed: {e}. Using defaults.")
+    return policy
 
 
 def create_ubuntu_mcp_server(security_policy: SecurityPolicy) -> MCPServer:
@@ -983,10 +1068,11 @@ async def main():
         await test_controller()
         return
 
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
     if args.policy == "dev":
-        policy = create_development_policy()
+        policy = load_policy_from_config(config_path, create_development_policy)
     else:
-        policy = create_secure_policy()
+        policy = load_policy_from_config(config_path, create_secure_policy)
 
     print(f"Starting Secure Ubuntu MCP Server with '{args.policy}' policy...", file=sys.stderr)
     mcp_server = create_ubuntu_mcp_server(policy)
