@@ -1,10 +1,9 @@
 <div align="center">
 
-# 🔒 Secure Ubuntu MCP Server
+<img src="assets/header.png" alt="Secure Ubuntu MCP Server" width="100%">
 
-**Hardened Model Context Protocol server · safe, controlled access to Ubuntu system operations**
-
-`mcp` · `python` · `security-first`
+<br/>
+<br/>
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![MCP](https://img.shields.io/badge/MCP-1.0+-0A3A5F?style=flat-square&logo=modelcontextprotocol&logoColor=white)](https://modelcontextprotocol.io/)
@@ -12,9 +11,17 @@
 [![Security Focused](https://img.shields.io/badge/Security-Focused-3DDC84?style=flat-square)](#-security-features)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-18.04%2B-E95420?style=flat-square&logo=ubuntu&logoColor=white)](https://ubuntu.com/)
 
----
+<br/>
+
+**Hardened Model Context Protocol server · safe, controlled access to Ubuntu system operations**
 
 Give your AI assistant **safe, audited, policy-controlled** access to an Ubuntu machine — through the power of the standard [Model Context Protocol](https://modelcontextprotocol.io/).
+
+</div>
+
+---
+
+<div align="center">
 
 ```
 ┌───────────────────────┐      ┌───────────────────────────┐      ┌─────────────────────┐
